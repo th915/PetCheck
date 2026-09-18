@@ -1,0 +1,52 @@
+### 전체 검색 (조건 없음)
+GET http://localhost:8080/api/places?page=0&size=10
+
+### 키워드 검색
+GET http://localhost:8080/api/places?keyword=카페&page=0&size=10
+
+### 대형견 동반 가능한 곳만
+GET http://localhost:8080/api/places?petSize=LARGE&page=0&size=10
+
+### 법정기준 인증 매장만
+GET http://localhost:8080/api/places?legalCertifiedOnly=true&page=0&size=10
+
+### 카테고리 다중 선택
+GET http://localhost:8080/api/places?categories=CAFE,RESTAURANT&page=0&size=10
+
+### 위탁·돌봄 시설만
+GET http://localhost:8080/api/places?careFacilityOnly=true&page=0&size=10
+
+### 지도 — 광주 시청 반경 3km, 가까운 순
+GET http://localhost:8080/api/places/map?latitude=35.1595&longitude=126.8526&radiusKm=3&sort=DISTANCE&limit=100
+
+### 장소 상세 (id 는 위 검색 결과에서 하나 골라 넣는다)
+GET http://localhost:8080/api/places/1
+
+### 없는 장소 — 404 와 에러 JSON 이 나와야 한다
+GET http://localhost:8080/api/places/99999999
+
+### 신뢰도 재계산 (수동)
+POST http://localhost:8080/api/admin/trust/recalculate
+
+### 정확도 대시보드
+GET http://localhost:8080/api/admin/dashboard/accuracy?days=30
+
+### 불일치 사유 분포
+GET http://localhost:8080/api/admin/dashboard/mismatch-reasons?days=30
+
+### 국세청 사업자등록 상태조회 — 앱을 거치지 않고 직접 호출
+POST https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=VgYsFPsbAutQOh%2BcbCvwBDRJ92oxiSQRFoqQ4fPBVc9nWwOvNQO7XHZdR49Y8UctXlE2YycSF0rUGW%2B0oRMx0w%3D%3D
+Content-Type: application/json
+Accept: application/json
+
+{
+  "b_no": ["1993301802"]
+}
+
+> {%
+    client.log("상태코드 = " + response.status);
+    client.log("응답 = " + JSON.stringify(response.body));
+
+    client.test("호출 성공", () => client.assert(response.status === 200));
+    client.test("결과 있음", () => client.assert(response.body.data && response.body.data.length > 0));
+%}

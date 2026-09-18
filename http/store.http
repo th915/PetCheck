@@ -1,0 +1,448 @@
+### =====================================================================
+### 매장 등록 · 승인 전체 흐름
+###
+### 확인하는 것
+###   - 사업자등록번호 검증 (형식 → 국세청 조회)
+###   - 등록 → 승인 → 사전 점수 0.65 에서 0.8 로 상승
+###   - 체크리스트 수정 시 승인 해제 및 점수 하락
+###   - 중복 등록, 남의 매장 조작 차단
+###
+### 실행 전: <<사업자번호>> 를 실제 영업 중인 사업자번호로 바꾸세요.
+### 매장은 마지막에 삭제되므로 같은 번호로 반복 실행할 수 있습니다.
+### =====================================================================
+
+### 1. 사장님 가입
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "owner-{{$timestamp}}@petcheck.com",
+  "password": "test1234!",
+  "nickname": "테스트사장님",
+  "role": "STORE"
+}
+
+> {%
+    client.global.clearAll();
+    client.global.set("ownerEmail", response.body.email);
+    client.global.set("newName", "신규테스트매장" + Date.now());
+    client.test("가입 성공", () => client.assert(response.status < 300));
+%}
+
+### 2. 사장님 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{ownerEmail}}", "password": "test1234!" }
+
+> {%
+    client.global.set("ownerToken", response.body.accessToken);
+    client.test("토큰 발급", () => client.assert(response.body.accessToken !== undefined));
+%}
+
+### 3. 매장을 연결할 장소 고르기 - 기존 데이터에 있는 장소일 경우
+GET http://localhost:8080/api/places?size=1
+
+> {%
+    const place = response.body.content[0];
+    client.global.set("placeId", String(place.id));
+    client.global.set("scoreBefore", String(place.trustScore));
+    client.log("대상 장소 = " + place.name + " (id=" + place.id
+        + ", 등록 전 신뢰도 " + place.trustScore + ")");
+%}
+
+### 4. 사업자번호 형식 검증 — 체크섬이 틀린 번호는 국세청까지 가지 않는다
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "placeId": {{placeId}},
+  "businessNumber": "123-45-67890",
+  "businessName": "형식오류 테스트",
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  }
+}
+
+> {%
+    client.test("잘못된 사업자번호는 400", () => client.assert(response.status === 400));
+    client.log("응답 = " + JSON.stringify(response.body));
+%}
+
+### 5. 매장 등록
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "placeId": {{placeId}},
+  "businessNumber": "1993301802",
+  "businessName": "테스트 매장",
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  },
+  "petPolicy": {
+    "allowSmall": true,
+    "allowMedium": true,
+    "allowLarge": false,
+    "indoorAllowed": true
+  }
+}
+
+> {%
+    client.log("등록 응답 = " + JSON.stringify(response.body));
+    client.test("등록 성공", () => client.assert(response.status < 300));
+    client.global.set("storeId", String(response.body.id));
+%}
+
+### 6. 같은 장소에 또 등록 → 409
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "placeId": {{placeId}},
+  "businessNumber": "1993301802",
+  "businessName": "중복 등록 시도",
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  }
+}
+
+> {% client.test("중복 등록 차단", () => client.assert(response.status === 409)); %}
+
+### 7. 내 매장 목록
+GET http://localhost:8080/api/store/me
+Authorization: Bearer {{ownerToken}}
+
+> {%
+    client.test("한 건 조회", () => client.assert(response.body.length === 1));
+    client.log("승인 상태 = " + response.body[0].verificationStatus);
+%}
+
+### 8. 승인 전 신뢰도 — 공공데이터 출처라 리뷰가 있다면 0.65 수준
+GET http://localhost:8080/api/places/{{placeId}}
+
+> {%
+    client.global.set("scorePending", String(response.body.trustScore));
+    client.log("승인 전 = " + response.body.trustScore);
+%}
+
+### 9. 관리자 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@petcheck.com", "password": "admin1234!" }
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### 10. 승인 대기 목록
+GET http://localhost:8080/api/admin/stores?status=PENDING&size=20
+Authorization: Bearer {{adminToken}}
+
+> {%
+    const ids = response.body.content.map((s) => String(s.id));
+    client.test("방금 등록한 매장이 대기 중", () =>
+        client.assert(ids.includes(client.global.get("storeId"))));
+%}
+
+### 11. 승인
+POST http://localhost:8080/api/admin/stores/{{storeId}}/approve
+Authorization: Bearer {{adminToken}}
+
+> {%
+    client.test("승인 성공", () => client.assert(response.status < 300));
+    client.log("상태 = " + response.body.verificationStatus);
+%}
+
+### 12. ★ 승인 후 신뢰도 — 0.8 로 올라간다
+GET http://localhost:8080/api/places/{{placeId}}
+
+> {%
+    const pending = parseFloat(client.global.get("scorePending"));
+    client.global.set("scoreApproved", String(response.body.trustScore));
+
+    client.log("승인 전 = " + pending + " → 승인 후 = " + response.body.trustScore);
+    client.test("승인으로 점수 상승", () => client.assert(response.body.trustScore > pending));
+%}
+
+### 13. 체크리스트 수정 — 한 항목을 false 로 바꾸면 승인이 풀린다
+PUT http://localhost:8080/api/store/{{storeId}}/checklist
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "partitioned": false,
+  "cageProvided": true, "leashAnchor": true, "seatCover": true,
+  "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+}
+
+> {%
+    client.test("수정 성공", () => client.assert(response.status < 300));
+    client.test("승인이 풀림", () =>
+        client.assert(response.body.verificationStatus === "PENDING"));
+%}
+
+### 14. ★ 인증이 풀렸으니 점수도 내려간다
+GET http://localhost:8080/api/places/{{placeId}}
+
+> {%
+    const approved = parseFloat(client.global.get("scoreApproved"));
+    client.log("승인 시 = " + approved + " → 수정 후 = " + response.body.trustScore);
+    client.test("점수 하락", () => client.assert(response.body.trustScore < approved));
+%}
+
+### 15. 다른 사장님 가입 — 소유권 검사용
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "other-{{$timestamp}}@petcheck.com",
+  "password": "test1234!",
+  "nickname": "남의사장님",
+  "role": "STORE"
+}
+
+> {% client.global.set("otherEmail", response.body.email); %}
+
+### 16. 다른 사장님 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{otherEmail}}", "password": "test1234!" }
+
+> {% client.global.set("otherToken", response.body.accessToken); %}
+
+### 17. 남의 매장 체크리스트 수정 시도 → 403
+PUT http://localhost:8080/api/store/{{storeId}}/checklist
+Content-Type: application/json
+Authorization: Bearer {{otherToken}}
+
+{
+  "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+  "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+}
+
+> {% client.test("남의 매장은 못 고친다", () => client.assert(response.status === 403)); %}
+
+### 18. 고객 계정으로는 매장 등록 자체가 막힌다
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "customer-{{$timestamp}}@petcheck.com",
+  "password": "test1234!",
+  "nickname": "고객",
+  "role": "CUSTOMER"
+}
+
+> {% client.global.set("customerEmail", response.body.email); %}
+
+### 19. 고객 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "{{customerEmail}}", "password": "test1234!" }
+
+> {% client.global.set("customerToken", response.body.accessToken); %}
+
+### 20. 고객이 매장 등록 시도 → 403
+GET http://localhost:8080/api/store/me
+Authorization: Bearer {{customerToken}}
+
+> {% client.test("고객은 매장 영역 접근 불가", () => client.assert(response.status === 403)); %}
+
+### 21. 정리 — 매장 삭제
+DELETE http://localhost:8080/api/store/{{storeId}}
+Authorization: Bearer {{ownerToken}}
+
+> {% client.test("삭제 성공", () => client.assert(response.status < 300)); %}
+
+### 22. ★ 매장이 사라지면 신뢰도가 등록 전으로 돌아간다
+GET http://localhost:8080/api/places/{{placeId}}
+
+> {%
+    const before = parseFloat(client.global.get("scoreBefore"));
+    client.log("등록 전 = " + before + " / 매장 삭제 후 = " + response.body.trustScore);
+    client.test("등록 전 값으로 복귀", () =>
+        client.assert(Math.abs(response.body.trustScore - before) < 1e-9));
+%}
+
+### =====================================================================
+### 공공데이터에 없는 매장을 사장님이 직접 등록하는 경로
+### 21번에서 매장을 지웠으므로 같은 사업자번호를 다시 쓸 수 있다.
+### =====================================================================
+
+### 22-1. 새 장소를 만들면서 매장 등록
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "businessNumber": "1993301802",
+  "businessName": "테스트매장2",
+  "newPlace": {
+    "name": "테스트매장2",
+    "category": "CAFE",
+    "address": "광주광역시 동구 충장로 1",
+    "phone": "062-000-0000",
+    "latitude": 35.1468,
+    "longitude": 126.9227
+  },
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  },
+  "petPolicy": {
+    "allowSmall": true,
+    "allowMedium": true,
+    "allowLarge": false,
+    "indoorAllowed": true
+  }
+}
+
+> {%
+    client.log("등록 응답 = " + JSON.stringify(response.body));
+    client.test("신규 장소 등록 성공", () => client.assert(response.status < 300));
+    client.global.set("newStoreId", String(response.body.id));
+    client.global.set("newPlaceId", String(response.body.placeId));
+%}
+
+### 22-2. 만들어진 장소 확인 — 직접 등록이라 사전 점수가 0.5 에서 시작
+GET http://localhost:8080/api/places/{{newPlaceId}}
+
+> {%
+    client.log("이름 = " + response.body.name + " / 신뢰도 = " + response.body.trustScore);
+    client.test("승인 전이라 0.5 수준", () => client.assert(response.body.trustScore < 0.6));
+%}
+
+### 22-3. 사업자번호를 비우기 위해 매장만 삭제 (장소는 남는다)
+DELETE http://localhost:8080/api/store/{{newStoreId}}
+Authorization: Bearer {{ownerToken}}
+
+> {% client.test("삭제 성공", () => client.assert(response.status < 300)); %}
+
+### 22-4. ★ 40m 떨어진 곳에 같은 이름 → 중복으로 차단(동일장소가 중복 기록되는걸 막기위해 한번 등록한적 있는 곳은 기존 장소 검색으로 감)
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "businessNumber": "1993301802",
+  "businessName": "테스트매장2",
+  "newPlace": {
+    "name": "테스트매장2",
+    "category": "CAFE",
+    "address": "광주광역시 동구 충장로 3",
+    "latitude": 35.1470,
+    "longitude": 126.9230
+  },
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  },
+  "petPolicy": { "allowSmall": true, "allowMedium": true, "allowLarge": false, "indoorAllowed": true }
+}
+
+> {%
+    client.test("근처 동일 이름은 409", () => client.assert(response.status === 409));
+    client.test("이름 중복으로 막힌 것", () =>
+        client.assert(response.body.code === "STORE_NAME_DUPLICATED"));
+%}
+
+### 22-5. ★ 44km 떨어진 곳에 같은 이름 → 허용
+### 전국에 동명 매장은 얼마든지 있으므로 이름만으로 막으면 안 된다
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "businessNumber": "1993301802",
+  "businessName": "테스트매장2",
+  "newPlace": {
+    "name": "테스트매장2",
+    "category": "CAFE",
+    "address": "전라남도 나주시 1",
+    "latitude": 35.5468,
+    "longitude": 126.9227
+  },
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  },
+  "petPolicy": { "allowSmall": true, "allowMedium": true, "allowLarge": false, "indoorAllowed": true }
+}
+
+> {%
+    client.test("먼 곳의 동명 매장은 허용", () => client.assert(response.status < 300));
+    client.global.set("farStoreId", String(response.body.id));
+%}
+
+### 22-6. 정리 — 먼 곳 매장 삭제
+DELETE http://localhost:8080/api/store/{{farStoreId}}
+Authorization: Bearer {{ownerToken}}
+
+### 22-7. petPolicy 없이 새 장소 등록 → 400
+### 동반 조건이 없으면 "동반 불가" 장소가 되어버려 사용자에게 잘못된 정보가 된다
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "businessNumber": "1993301802",
+  "businessName": "조건없는매장{{$timestamp}}",
+  "newPlace": {
+    "name": "조건없는매장{{$timestamp}}",
+    "category": "CAFE",
+    "address": "광주광역시 서구 1",
+    "latitude": 35.1500,
+    "longitude": 126.8500
+  },
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  }
+}
+
+> {% client.test("동반 조건 없으면 400", () => client.assert(response.status === 400)); %}
+
+### 22-8. placeId 와 newPlace 를 둘 다 보내면 → 400
+POST http://localhost:8080/api/store
+Content-Type: application/json
+Authorization: Bearer {{ownerToken}}
+
+{
+  "placeId": {{placeId}},
+  "businessNumber": "1993301802",
+  "businessName": "둘다보냄",
+  "newPlace": {
+    "name": "둘다보냄",
+    "category": "CAFE",
+    "address": "광주광역시 동구 1",
+    "latitude": 35.1468,
+    "longitude": 126.9227
+  },
+  "legalChecklist": {
+    "partitioned": true, "cageProvided": true, "leashAnchor": true, "seatCover": true,
+    "petTableware": true, "petWasteBin": true, "entranceSign": true, "vaccinationCheck": true
+  },
+  "petPolicy": { "allowSmall": true, "allowMedium": true, "allowLarge": false, "indoorAllowed": true }
+}
+
+> {% client.test("둘 다 보내면 400", () => client.assert(response.status === 400)); %}
+
+### 23. 정리 — 사장님 탈퇴
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{ownerToken}}
+
+### 24. 정리 — 다른 사장님 탈퇴
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{otherToken}}
+
+### 25. 정리 — 고객 탈퇴
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{customerToken}}

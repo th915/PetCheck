@@ -1,0 +1,115 @@
+### 1. 관리자 로그인 — token 저장
+### 관리자 계정이 없으면 앱을 재시작하세요 (AdminAccountInitializer 가 다시 만듭니다)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@petcheck.com", "password": "admin1234!" }
+
+> {%
+    client.global.set("token", response.body.accessToken);
+    client.log("관리자 토큰 저장 — " + response.body.member.role);
+%}
+
+### 2. 내 정보 — 토큰이 살아 있는지 확인
+GET http://localhost:8080/api/auth/me
+Authorization: Bearer {{token}}
+
+### 3. 일반 회원 가입 — 이미 있으면 409. 무시하고 다음으로
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "customer@petcheck.com",
+  "password": "customer1234!",
+  "nickname": "태희",
+  "role": "CUSTOMER"
+}
+
+### 4. 매장 사장님 가입 — 이미 있으면 409. 무시하고 다음으로
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "owner@petcheck.com",
+  "password": "owner1234!",
+  "nickname": "멍멍카페 사장",
+  "role": "STORE"
+}
+
+### 5. 관리자 가입 시도 — 400, "관리자 계정은 가입으로 만들 수 없습니다"
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "hacker@petcheck.com",
+  "password": "hacker1234!",
+  "nickname": "해커",
+  "role": "ADMIN"
+}
+
+### 6. 검증 실패 — 400, fieldErrors 에 email·password·nickname 세 건
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "not-an-email",
+  "password": "짧음",
+  "nickname": "",
+  "role": "CUSTOMER"
+}
+
+### 7. 틀린 비밀번호 — 401 LOGIN_FAILED
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "admin@petcheck.com", "password": "wrong" }
+
+### 8. 토큰 없이 관리자 API — 401 UNAUTHORIZED (HTML 아니라 JSON 이어야 한다)
+POST http://localhost:8080/api/admin/trust/recalculate
+
+### 9. 관리자 토큰으로 관리자 API — 200
+POST http://localhost:8080/api/admin/trust/recalculate
+Authorization: Bearer {{token}}
+
+### 10. 일반 회원 로그인 — customerToken 저장
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "customer@petcheck.com", "password": "customer1234!" }
+
+> {% client.global.set("customerToken", response.body.accessToken); %}
+
+### 11. 일반 회원 토큰으로 관리자 API — 403 FORBIDDEN
+POST http://localhost:8080/api/admin/trust/recalculate
+Authorization: Bearer {{customerToken}}
+
+### 12. 공개 경로 — 토큰 없이 200
+GET http://localhost:8080/api/places?page=0&size=3
+
+
+##### 여기부터 정리 #####
+### 90. 사장님 로그인 — storeToken 저장 (탈퇴용)
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "owner@petcheck.com", "password": "owner1234!" }
+
+> {% client.global.set("storeToken", response.body.accessToken); %}
+
+### 91. 사장님 탈퇴 — 204. 등록한 매장이 있으면 함께 삭제되고 장소 신뢰도가 0.5 로 돌아간다
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{storeToken}}
+
+### 92. 일반 회원 탈퇴 — 204
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{customerToken}}
+
+### 93. 탈퇴한 계정으로 로그인 — 401 LOGIN_FAILED
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{ "email": "customer@petcheck.com", "password": "customer1234!" }
+
+### 94. 관리자 탈퇴 시도 — 400, "관리자 계정은 탈퇴할 수 없습니다"
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{token}}

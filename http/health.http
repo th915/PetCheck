@@ -1,0 +1,22 @@
+### IntelliJ HTTP Client — 왼쪽 ▶ 버튼으로 실행
+### Postman 설치 없이 이 파일로 API 테스트를 한다.
+
+### 헬스체크
+GET http://localhost:8080/api/health
+Accept: application/json
+
+
+### CORS 프리플라이트 확인 (프론트 연결이 안 될 때)
+OPTIONS http://localhost:8080/api/health
+Origin: http://localhost:3000
+Access-Control-Request-Method: GET
+
+### TourAPI 반려동물 동반여행 상세 — 필드명 확인용
+### {{contentId}} 와 {{serviceKey}} 를 실제 값으로 바꿔서 실행하고,
+### 응답에 어떤 키가 오는지 보고 TourPetDetail record 를 맞춘다.
+GET https://apis.data.go.kr/B551011/KorPetTourService2/detailPetTour2
+    ?serviceKey=VgYsFPsbAutQOh%2BcbCvwBDRJ92oxiSQRFoqQ4fPBVc9nWwOvNQO7XHZdR49Y8UctXlE2YycSF0rUGW%2B0oRMx0w%3D%3D
+    &MobileOS=ETC
+    &MobileApp=petcheck
+    &_type=json
+    &contentId=125534
