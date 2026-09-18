@@ -1,7 +1,12 @@
 (function () {
 	const listEl = document.getElementById("storeList");
 
-	const STATUS_LABEL = { PENDING: "승인 대기", APPROVED: "승인됨", REJECTED: "반려됨" };
+	const STATUS_LABEL = {
+		NOT_REQUESTED: "인증 미신청",
+		PENDING: "인증 승인 대기",
+		APPROVED: "인증 승인됨",
+		REJECTED: "인증 반려됨",
+	};
 
 	async function load() {
 		try {
@@ -27,6 +32,7 @@
 					${escapeHtml(s.placeName)} · 사업자번호 ${escapeHtml(s.businessNumber)}<br>
 					법정기준 체크리스트 ${s.satisfiedCount}/8 충족
 					${s.legalCertified ? ' · <span class="badge-certified">★ 법정기준 인증</span>' : ""}
+					${s.verificationStatus === "NOT_REQUESTED" ? "<br>8개 항목을 모두 충족하면 인증 신청이 자동으로 접수됩니다." : ""}
 					${s.verificationStatus === "REJECTED" && s.rejectReason ? `<br>반려 사유: ${escapeHtml(s.rejectReason)}` : ""}
 				</div>
 				<div class="store-card-actions">
@@ -38,12 +44,12 @@
 
 		listEl.querySelectorAll("[data-delete]").forEach((btn) => {
 			btn.addEventListener("click", async () => {
-				if (!confirm("이 매장을 삭제하시겠습니까? 인증 상태가 초기화됩니다.")) return;
+				if (!(await UIDialog.confirm("이 매장을 삭제하시겠습니까? 인증 상태가 초기화됩니다."))) return;
 				try {
 					await Api.del(`/api/store/${btn.dataset.delete}`);
 					await load();
 				} catch (e) {
-					alert(e.message);
+					UIDialog.alert(e.message);
 				}
 			});
 		});

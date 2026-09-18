@@ -104,7 +104,7 @@ public class Store extends BaseTimeEntity {
         this.businessNumber = businessNumber;
         this.legalChecklist = legalChecklist;
         this.proofImageUrl = proofImageUrl;
-        this.verificationStatus = VerificationStatus.PENDING;
+        this.verificationStatus = nextStatus(legalChecklist, null);
         syncCertification();
     }
 
@@ -129,9 +129,29 @@ public class Store extends BaseTimeEntity {
     public void updateChecklist(LegalChecklist legalChecklist, String proofImageUrl) {
         this.legalChecklist = legalChecklist;
         this.proofImageUrl = proofImageUrl;
-        this.verificationStatus = VerificationStatus.PENDING;
+        this.verificationStatus = nextStatus(legalChecklist, this.verificationStatus);
         this.approvedAt = null;
         syncCertification();
+    }
+
+    /**
+     * 등록·체크리스트 수정 시점의 상태를 정한다.
+     * <p>
+     * 전 항목을 충족하지 못하면 애초에 인증을 신청한 게 아니므로 관리자 대기열에
+     * 올라갈 이유가 없다 — NOT_REQUESTED 로 남는다(매장 등록 자체는 그대로 유지).
+     * 전 항목을 충족하면 인증 신청이 들어온 것이니 PENDING 이 된다. 단, 이미
+     * APPROVED 인 매장이 여전히 전 항목을 충족한다면 재승인을 요구하지 않는다 —
+     * 체크리스트를 안 건드린 것과 같은 결과이므로 대기열에 다시 넣을 이유가 없다.
+     */
+    private VerificationStatus nextStatus(LegalChecklist checklist, VerificationStatus current) {
+        boolean fullySatisfied = checklist != null && checklist.isFullySatisfied();
+        if (!fullySatisfied) {
+            return VerificationStatus.NOT_REQUESTED;
+        }
+        if (current == VerificationStatus.APPROVED) {
+            return VerificationStatus.APPROVED;
+        }
+        return VerificationStatus.PENDING;
     }
 
     /**

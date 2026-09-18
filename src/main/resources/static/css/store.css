@@ -123,6 +123,11 @@
 	font-weight: 600;
 }
 
+.status-badge.NOT_REQUESTED {
+	background: #f1ede8;
+	color: var(--text-muted);
+}
+
 .status-badge.PENDING {
 	background: #fff3d6;
 	color: #a86b00;
