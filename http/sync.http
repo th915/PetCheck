@@ -1,0 +1,2 @@
+### 문화정보원 CSV 동기화 (7만건 — 몇 분 걸린다)
+POST http://localhost:8080/api/admin/sync/culture

@@ -1,0 +1,227 @@
+### =====================================================================
+### 가짜 리뷰 판정 시연
+###
+###   ① 정상 리뷰      → GENUINE   가중치 0.25   점수 상승
+###   ② 내용 없는 홍보글 → SUSPICIOUS 가중치 0.075 점수 거의 안 오름
+###   ③ 광고 리뷰       → FAKE      가중치 0.0   점수 변화 없음
+###
+### 마지막에 관리자가 ③ 을 수동으로 뒤집어 오판 구제 경로까지 확인한다.
+### 장소를 셋으로 나눈 이유는 각 판정이 점수에 미치는 영향을
+### 서로 섞이지 않게 따로 보기 위해서다.
+### =====================================================================
+
+### 1. 고객 가입
+POST http://localhost:8080/api/auth/signup
+Content-Type: application/json
+
+{
+  "email": "fake-test-{{$timestamp}}@petcheck.com",
+  "password": "test1234!",
+  "nickname": "판정테스터",
+  "role": "CUSTOMER"
+}
+
+> {%
+    client.global.clearAll();
+    client.global.set("email", response.body.email); %}
+
+### 2. 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "test1234!"
+}
+
+> {% client.global.set("token", response.body.accessToken); %}
+
+### 3. 장소 세 곳과 기준 점수 확보
+GET http://localhost:8080/api/places?size=5
+
+> {%
+    const list = response.body.content;
+    client.log("조회된 장소 수 = " + list.length);
+
+    client.global.set("placeId1", String(list[0].id));
+    client.global.set("placeId2", String(list[1].id));
+    client.global.set("placeId3", String(list[2].id));
+
+    client.global.set("scoreBefore1", String(list[0].trustScore));
+    client.global.set("scoreBefore2", String(list[1].trustScore));
+    client.global.set("scoreBefore3", String(list[2].trustScore));
+
+    for (let i = 0; i < 3; i++) {
+        client.log("장소" + (i + 1) + " = " + list[i].name
+            + " (id=" + list[i].id + ", 기준점수 " + list[i].trustScore + ")");
+    }
+
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    client.global.set("today", d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()));
+%}
+
+### 4. 리뷰 ① — 구체적인 사실이 담긴 정상 리뷰
+POST http://localhost:8080/api/reviews
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "placeId": {{placeId1}},
+  "matched": true,
+  "visitedAt": "{{today}}",
+  "content": "토요일 오후에 5kg 푸들 데리고 갔는데 입구에 동반 가능 안내문이 붙어 있었고, 직원분이 대기 의자에 커버를 깔아주셨어요. 목줄만 하면 된다고 안내받았습니다."
+}
+
+> {% client.global.set("reviewId1", response.body.id); %}
+
+### 5. 리뷰 ② — 칭찬뿐이고 확인할 수 있는 사실이 없는 글
+POST http://localhost:8080/api/reviews
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "placeId": {{placeId2}},
+  "matched": true,
+  "visitedAt": "{{today}}",
+  "content": "여기 정말 최고입니다. 사장님도 친절하시고 분위기도 너무 좋아요. 다들 꼭 한번 가보세요. 강력 추천합니다."
+}
+
+> {% client.global.set("reviewId2", response.body.id); %}
+
+### 6. 리뷰 ③ — 연락처와 홍보 문구가 박힌 광고
+POST http://localhost:8080/api/reviews
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "placeId": {{placeId3}},
+  "matched": true,
+  "visitedAt": "{{today}}",
+  "content": "반려동물 용품 최저가로 드립니다. 예약 문의 010-1234-5678 로 주세요. 카톡 petshop2026 도 가능합니다."
+}
+
+> {%
+    client.global.set("reviewId3", response.body.id);
+    client.test("작성 직후에는 모두 PENDING", () =>
+        client.assert(response.body.authenticityStatus === "PENDING"));
+    client.log("작성 직후 가중치 = " + response.body.currentWeight + " (PENDING 이라 절반만 반영)");
+%}
+
+### 7. 비동기 판정이 끝나기를 기다린다
+< {%
+    // IntelliJ HTTP Client 에는 sleep 이 없어서 잠깐 붙잡아 둔다. 테스트 전용.
+    const until = Date.now() + 6000;
+    while (Date.now() < until) { /* 대기 */ }
+%}
+GET http://localhost:8080/api/health
+
+### 8. ★ 세 리뷰의 판정 결과와 가중치 비교
+GET http://localhost:8080/api/reviews/me?size=10
+Authorization: Bearer {{token}}
+
+> {%
+    const byId = {};
+    response.body.content.forEach((r) => { byId[String(r.id)] = r; });
+
+    const a = byId[client.global.get("reviewId1")];
+    const b = byId[client.global.get("reviewId2")];
+    const c = byId[client.global.get("reviewId3")];
+
+    client.log("① 정상   → " + a.authenticityStatus + " / 가중치 " + a.currentWeight);
+    client.log("           사유: " + a.authenticityReason);
+    client.log("② 홍보글 → " + b.authenticityStatus + " / 가중치 " + b.currentWeight);
+    client.log("           사유: " + b.authenticityReason);
+    client.log("③ 광고   → " + c.authenticityStatus + " / 가중치 " + c.currentWeight);
+    client.log("           사유: " + c.authenticityReason);
+
+    client.test("① 정상 리뷰는 통과", () => client.assert(a.authenticityStatus === "GENUINE"));
+    client.test("① 가중치는 0.25 (인증 0.25 × 진정성 1.0)", () =>
+        client.assert(Math.abs(a.currentWeight - 0.25) < 0.01));
+
+    // ② 는 LLM 판단이라 결과를 단정하지 않는다. 판정이 끝났는지만 확인한다
+    client.test("② 판정 완료", () => client.assert(b.authenticityStatus !== "PENDING"));
+
+    client.test("③ 광고는 FAKE", () => client.assert(c.authenticityStatus === "FAKE"));
+    client.test("③ 가중치 0 — 점수에 전혀 반영되지 않음", () =>
+        client.assert(c.currentWeight === 0));
+%}
+
+### 9. ★ 광고 리뷰를 단 장소 — 점수가 작성 전 그대로인지
+GET http://localhost:8080/api/places/{{placeId3}}
+
+> {%
+    const before = parseFloat(client.global.get("scoreBefore3"));
+    client.global.set("scoreFake", response.body.trustScore);
+
+    client.log("작성 전 = " + before + " / 광고 리뷰 판정 후 = " + response.body.trustScore);
+    client.test("가짜 리뷰는 점수를 못 올린다", () =>
+        client.assert(Math.abs(response.body.trustScore - before) < 1e-9));
+%}
+
+### 10. 정상 리뷰를 단 장소 — 점수가 올랐는지
+GET http://localhost:8080/api/places/{{placeId1}}
+
+> {%
+    const before = parseFloat(client.global.get("scoreBefore1"));
+    client.log("작성 전 = " + before + " / 정상 리뷰 후 = " + response.body.trustScore);
+    client.test("진짜 리뷰는 점수를 올린다", () =>
+        client.assert(response.body.trustScore > before));
+%}
+
+### 11. 공개 목록에서 광고 리뷰가 빠졌는지
+GET http://localhost:8080/api/reviews?placeId={{placeId3}}&size=10
+
+> {%
+    const ids = response.body.content.map((r) => String(r.id));
+    client.test("FAKE 는 목록에 노출되지 않는다", () =>
+        client.assert(!ids.includes(client.global.get("reviewId3"))));
+%}
+
+### 12. 관리자 로그인
+POST http://localhost:8080/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@petcheck.com",
+  "password": "admin1234!"
+}
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### 13. 관리자 화면 — 조작으로 걸린 리뷰 목록
+GET http://localhost:8080/api/admin/reviews?status=FAKE&size=20
+Authorization: Bearer {{adminToken}}
+
+> {%
+    const ids = response.body.content.map((r) => String(r.id));
+    client.test("걸러낸 리뷰가 관리자에게 보인다", () =>
+        client.assert(ids.includes(client.global.get("reviewId3"))));
+    client.log("현재 FAKE 판정 리뷰 " + response.body.totalElements + "건");
+%}
+
+### 14. 관리자가 판정을 뒤집는다 (오판 구제 경로)
+POST http://localhost:8080/api/admin/reviews/{{reviewId3}}/verdict
+Content-Type: application/json
+Authorization: Bearer {{adminToken}}
+
+{
+  "status": "GENUINE",
+  "reason": "시연용 — 관리자 검토 후 정상 리뷰로 판단"
+}
+
+> {% client.test("204 처리", () => client.assert(response.status === 204)); %}
+
+### 15. ★ 뒤집자마자 점수에 반영되는지
+GET http://localhost:8080/api/places/{{placeId3}}
+
+> {%
+    const fakeScore = parseFloat(client.global.get("scoreFake"));
+    client.log("FAKE 였을 때 = " + fakeScore + " / 관리자 복원 후 = " + response.body.trustScore);
+    client.test("복원하면 즉시 점수에 반영된다", () =>
+        client.assert(response.body.trustScore > fakeScore));
+%}
+
+### 16. 정리 — 고객 탈퇴 (리뷰 3건과 누적값도 함께 되돌아간다)
+DELETE http://localhost:8080/api/auth/me
+Authorization: Bearer {{token}}

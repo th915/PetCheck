@@ -1,0 +1,5 @@
+### 설정 주입 확인
+GET http://localhost:8080/api/admin/diagnostics/config
+
+### TourAPI 실제 호출 확인
+GET http://localhost:8080/api/admin/diagnostics/tour/126508
