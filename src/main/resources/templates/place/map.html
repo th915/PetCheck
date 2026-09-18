@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('지도')}"></head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="app-shell">
+	<nav class="side-nav">
+		<a th:href="@{/trips/new}">📍<span>일정생성</span></a>
+		<a th:href="@{/trips}">📋<span>일정목록</span></a>
+	</nav>
+
+	<div class="search-panel">
+		<div class="search-box">
+			<input type="text" id="keywordInput" placeholder="장소명, 주소, 키워드로 검색 (예: 동물병원)">
+		</div>
+		<div class="sort-bar" id="sortBar">
+			<button data-sort="TRUST_SCORE" class="active">추천순</button>
+			<button data-sort="DISTANCE">거리순</button>
+			<button data-sort="REVIEW_COUNT">리뷰순</button>
+			<button id="certifiedBtn" style="margin-left:auto;">★ 인증 매장</button>
+		</div>
+		<div class="place-list" id="placeList"></div>
+	</div>
+
+	<div class="map-area">
+		<div id="map"></div>
+		<div id="mapFallback" class="map-fallback" style="display:none;"></div>
+		<div id="placePopup" class="place-popup"></div>
+	</div>
+</div>
+
+<script th:inline="javascript">
+	const KAKAO_JS_KEY = /*[[${kakaoJsKey}]]*/ "";
+	const IS_AUTHENTICATED = /*[[${#authorization.expression('isAuthenticated()')}]]*/ false;
+	const IS_CUSTOMER = /*[[${#authorization.expression('hasRole(''CUSTOMER'')')}]]*/ false;
+</script>
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/map-common.js}"></script>
+<script th:src="@{/js/place-popup.js}"></script>
+<script th:src="@{/js/review-write.js}"></script>
+<script th:src="@{/js/place-search.js}"></script>
+<script th:inline="javascript">
+	PlacePopup.isLoggedIn = IS_AUTHENTICATED;
+	PlacePopup.isCustomer = IS_CUSTOMER;
+	let panel;
+	MapKit.init("map", KAKAO_JS_KEY).then(() => {
+		panel = createPlaceSearchPanel({
+			keywordInputId: "keywordInput",
+			listId: "placeList",
+			sortBarId: "sortBar",
+			certifiedBtnId: "certifiedBtn",
+			showAddButton: false,
+			onResults: renderMarkers,
+		});
+		PlacePopup.onFavoriteToggled = (placeId, favorited) => panel.updateFavoriteBadge(placeId, favorited);
+	});
+
+	function renderMarkers(results) {
+		MapKit.clearAll();
+		results.forEach((p) => {
+			MapKit.addMarker(p.latitude, p.longitude, null, () => PlacePopup.open(p.id));
+		});
+		if (results.length > 0) {
+			MapKit.fitBounds(results.map((p) => ({ lat: p.latitude, lng: p.longitude })));
+		}
+	}
+</script>
+</body>
+</html>

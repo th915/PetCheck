@@ -1,0 +1,36 @@
+# --- 비밀값: 절대 커밋 금지 ---
+.env
+.env.*
+http/tour-api.http
+http/nts.http
+http-client.private.env.json
+
+# --- 빌드 산출물 ---
+build/
+!gradle/wrapper/gradle-wrapper.jar
+.gradle/
+out/
+src/main/generated/
+
+# --- IntelliJ ---
+.idea/
+*.iml
+*.iws
+
+# --- VS Code ---
+.vscode/
+
+# --- 데이터 파일 (용량 큼, 재다운로드 가능) ---
+petcheck-data/
+*.csv
+*.xlsx
+
+# --- 업로드 이미지 ---
+uploads/
+
+# --- macOS / Windows ---
+.DS_Store
+Thumbs.db
+
+# --- Claude Code 세션 파일 ---
+.claude/

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>매장 관리 | PetCheck</title>
+	<link rel="stylesheet" th:href="@{/css/common.css}">
+	<link rel="stylesheet" th:href="@{/css/store.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="store-page">
+	<div class="trip-list-header">
+		<h1>내 매장</h1>
+		<a th:href="@{/store/register}" class="btn-primary" style="width:auto;padding:10px 16px;">+ 매장 등록</a>
+	</div>
+	<div id="storeList"></div>
+</div>
+
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/store-dashboard.js}"></script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+package com.petcheck.backend.common.security;
+
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.WebUtils;
+
+import jakarta.servlet.http.Cookie;
+import java.io.IOException;
+
+/**
+ * Authorization 헤더의 토큰을 읽어 SecurityContext 에 인증을 심는다.
+ * <p>
+ * 토큰이 없거나 잘못됐어도 여기서 401 을 만들지 않는다.
+ * 그 경로가 인증이 필요한지는 시큐리티 설정이 판단할 일이고,
+ * 필터가 미리 막으면 공개 API 까지 토큰을 요구하게 된다.
+ */
+@Slf4j
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final String HEADER = "Authorization";
+    private static final String PREFIX = "Bearer ";
+    private static final String COOKIE_NAME = "ACCESS_TOKEN";
+
+    private final JwtTokenProvider tokenProvider;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        String token = resolveToken(request);
+
+        if (token != null) {
+            try {
+                MemberPrincipal principal = tokenProvider.parse(token);
+
+                Authentication authentication = new UsernamePasswordAuthenticationToken(
+                        principal, null, principal.authorities());
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            } catch (JwtException | IllegalArgumentException e) {
+                // 만료·위조·형식 오류. 인증 없이 통과시키고 뒤에서 401 이 나가게 둔다.
+                SecurityContextHolder.clearContext();
+                log.debug("JWT 검증 실패 — {}", e.getMessage());
+            }
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    /**
+     * 헤더(API 클라이언트) 우선, 없으면 쿠키(브라우저의 일반 내비게이션·같은 오리진 fetch)를 본다.
+     * Thymeleaf 화면 쪽 요청은 커스텀 헤더를 못 실으므로 로그인 시 심어둔
+     * ACCESS_TOKEN 쿠키로 인증한다.
+     */
+    private String resolveToken(HttpServletRequest request) {
+        String header = request.getHeader(HEADER);
+        if (header != null && header.startsWith(PREFIX)) {
+            return header.substring(PREFIX.length()).trim();
+        }
+
+        Cookie cookie = WebUtils.getCookie(request, COOKIE_NAME);
+        if (cookie != null && !cookie.getValue().isBlank()) {
+            return cookie.getValue();
+        }
+        return null;
+    }
+}

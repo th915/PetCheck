@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>체크리스트 수정 | PetCheck</title>
+	<link rel="stylesheet" th:href="@{/css/common.css}">
+	<link rel="stylesheet" th:href="@{/css/store.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="store-page">
+	<h1>법정 기준 체크리스트 수정</h1>
+	<p class="page-desc">체크리스트를 수정하면 인증 상태가 승인 대기로 초기화되고, 다시 관리자 심사를 받습니다.</p>
+
+	<div class="checklist-grid" id="checklistGrid">
+		<div class="checklist-item" data-key="partitioned">
+			<span>칸막이 등 구역 분리</span>
+			<label><input type="radio" name="partitioned" value="true"> 예</label>
+			<label><input type="radio" name="partitioned" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="cageProvided">
+			<span>전용 케이지·이동장 비치</span>
+			<label><input type="radio" name="cageProvided" value="true"> 예</label>
+			<label><input type="radio" name="cageProvided" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="leashAnchor">
+			<span>목줄 고정장치 설치</span>
+			<label><input type="radio" name="leashAnchor" value="true"> 예</label>
+			<label><input type="radio" name="leashAnchor" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="seatCover">
+			<span>테이블·의자 덮개 비치</span>
+			<label><input type="radio" name="seatCover" value="true"> 예</label>
+			<label><input type="radio" name="seatCover" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="petTableware">
+			<span>전용 식기 비치</span>
+			<label><input type="radio" name="petTableware" value="true"> 예</label>
+			<label><input type="radio" name="petTableware" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="petWasteBin">
+			<span>전용 쓰레기통 비치</span>
+			<label><input type="radio" name="petWasteBin" value="true"> 예</label>
+			<label><input type="radio" name="petWasteBin" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="entranceSign">
+			<span>출입구 동반 가능 표시</span>
+			<label><input type="radio" name="entranceSign" value="true"> 예</label>
+			<label><input type="radio" name="entranceSign" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="vaccinationCheck">
+			<span>예방접종 확인 절차 운영</span>
+			<label><input type="radio" name="vaccinationCheck" value="true"> 예</label>
+			<label><input type="radio" name="vaccinationCheck" value="false"> 아니오</label>
+		</div>
+	</div>
+
+	<div id="currentProof"></div>
+	<div class="form-group">
+		<label>증빙 사진 새로 올리기 (선택 — 안 올리면 기존 사진 유지)</label>
+		<input type="file" id="proofImage" accept="image/*">
+	</div>
+
+	<div class="form-message error" id="checklistError" style="display:none;"></div>
+	<button type="button" class="btn-primary" id="checklistSubmit" style="width:auto;padding:12px 24px;">저장</button>
+</div>
+
+<script th:inline="javascript">
+	const STORE_ID = /*[[${storeId}]]*/ 0;
+</script>
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/store-checklist.js}"></script>
+</body>
+</html>

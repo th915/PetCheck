@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>매장 등록 | PetCheck</title>
+	<link rel="stylesheet" th:href="@{/css/common.css}">
+	<link rel="stylesheet" th:href="@{/css/trip.css}">
+	<link rel="stylesheet" th:href="@{/css/store.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="store-page">
+	<h1>매장 등록</h1>
+	<p class="page-desc">공공데이터에 이미 있는 장소에 내 매장을 연결하거나, 새로 문을 연 매장은 직접 등록할 수 있습니다.</p>
+
+	<div class="mode-toggle">
+		<button type="button" class="mode-btn active" id="modeExisting">기존 장소 연결</button>
+		<button type="button" class="mode-btn" id="modeNew">신규 매장 등록</button>
+	</div>
+
+	<div id="existingPlaceSection">
+		<div class="search-box" style="padding:0;margin-bottom:10px;">
+			<input type="text" id="keywordInput" placeholder="장소명 또는 주소로 검색">
+		</div>
+		<div class="sort-bar" id="sortBar" style="padding:0 0 10px;">
+			<button data-sort="TRUST_SCORE" class="active">추천순</button>
+			<button data-sort="DISTANCE">거리순</button>
+		</div>
+		<div class="place-list store-place-list" id="placeList" style="border:1px solid var(--border);border-radius:10px;max-height:280px;"></div>
+		<div class="form-message info" id="selectedPlaceInfo" style="display:none;margin-top:10px;"></div>
+	</div>
+
+	<div id="newPlaceSection" style="display:none;">
+		<div class="form-grid">
+			<div class="form-group">
+				<label>매장 이름</label>
+				<input type="text" id="npName">
+			</div>
+			<div class="form-group">
+				<label>업종</label>
+				<select id="npCategory">
+					<option value="RESTAURANT">식당</option>
+					<option value="CAFE">카페</option>
+					<option value="ACCOMMODATION">숙박</option>
+					<option value="CULTURE">문화시설</option>
+					<option value="TOURIST_SPOT">관광지</option>
+					<option value="PET_SITTER">펫시터</option>
+					<option value="PET_HOTEL">애견호텔</option>
+					<option value="PET_KINDERGARTEN">애견유치원</option>
+					<option value="VET">동물병원</option>
+					<option value="PET_PHARMACY">동물약국</option>
+					<option value="PET_SUPPLY">펫샵</option>
+					<option value="PET_GROOMING">미용</option>
+					<option value="ETC">기타</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label>주소</label>
+				<input type="text" id="npAddress">
+			</div>
+			<div class="form-group">
+				<label>전화번호 (선택)</label>
+				<input type="text" id="npPhone">
+			</div>
+			<div class="form-group">
+				<label>위도</label>
+				<input type="number" step="0.000001" id="npLat" placeholder="예: 35.1595">
+			</div>
+			<div class="form-group">
+				<label>경도</label>
+				<input type="number" step="0.000001" id="npLng" placeholder="예: 126.8526">
+			</div>
+		</div>
+		<div class="field-hint">위/경도는 지도 앱에서 매장 위치를 검색해 확인한 좌표를 입력해주세요.</div>
+
+		<h3 class="section-title">반려동물 동반 조건</h3>
+		<div class="form-grid">
+			<label class="role-option"><input type="checkbox" id="ppAllowSmall"> 소형견 가능</label>
+			<label class="role-option"><input type="checkbox" id="ppAllowMedium"> 중형견 가능</label>
+			<label class="role-option"><input type="checkbox" id="ppAllowLarge"> 대형견 가능</label>
+			<label class="role-option"><input type="checkbox" id="ppIndoor"> 실내 동반 가능</label>
+			<label class="role-option"><input type="checkbox" id="ppOutdoor"> 야외 동반 가능</label>
+			<label class="role-option"><input type="checkbox" id="ppLeash"> 목줄 필수</label>
+			<label class="role-option"><input type="checkbox" id="ppCarrier"> 이동장 필수</label>
+			<label class="role-option"><input type="checkbox" id="ppVaccination"> 예방접종 증빙 요구</label>
+		</div>
+		<div class="form-grid">
+			<div class="form-group">
+				<label>체중 제한(kg, 선택)</label>
+				<input type="number" step="0.1" id="ppWeightLimit">
+			</div>
+			<div class="form-group">
+				<label>추가 요금(원, 선택)</label>
+				<input type="number" id="ppExtraFee">
+			</div>
+		</div>
+		<div class="form-group">
+			<label>기타 제한사항(선택)</label>
+			<textarea id="ppRestrictionNote" rows="2" maxlength="500"></textarea>
+		</div>
+	</div>
+
+	<h3 class="section-title">사업자 정보</h3>
+	<div class="form-grid">
+		<div class="form-group">
+			<label>상호명</label>
+			<input type="text" id="businessName">
+		</div>
+		<div class="form-group">
+			<label>사업자등록번호</label>
+			<input type="text" id="businessNumber" placeholder="000-00-00000">
+		</div>
+	</div>
+
+	<h3 class="section-title">법정 기준 체크리스트 (반려동물 동반 출입 시설기준 8항목)</h3>
+	<div class="checklist-grid" id="checklistGrid">
+		<div class="checklist-item" data-key="partitioned">
+			<span>칸막이 등 구역 분리</span>
+			<label><input type="radio" name="partitioned" value="true"> 예</label>
+			<label><input type="radio" name="partitioned" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="cageProvided">
+			<span>전용 케이지·이동장 비치</span>
+			<label><input type="radio" name="cageProvided" value="true"> 예</label>
+			<label><input type="radio" name="cageProvided" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="leashAnchor">
+			<span>목줄 고정장치 설치</span>
+			<label><input type="radio" name="leashAnchor" value="true"> 예</label>
+			<label><input type="radio" name="leashAnchor" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="seatCover">
+			<span>테이블·의자 덮개 비치</span>
+			<label><input type="radio" name="seatCover" value="true"> 예</label>
+			<label><input type="radio" name="seatCover" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="petTableware">
+			<span>전용 식기 비치</span>
+			<label><input type="radio" name="petTableware" value="true"> 예</label>
+			<label><input type="radio" name="petTableware" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="petWasteBin">
+			<span>전용 쓰레기통 비치</span>
+			<label><input type="radio" name="petWasteBin" value="true"> 예</label>
+			<label><input type="radio" name="petWasteBin" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="entranceSign">
+			<span>출입구 동반 가능 표시</span>
+			<label><input type="radio" name="entranceSign" value="true"> 예</label>
+			<label><input type="radio" name="entranceSign" value="false"> 아니오</label>
+		</div>
+		<div class="checklist-item" data-key="vaccinationCheck">
+			<span>예방접종 확인 절차 운영</span>
+			<label><input type="radio" name="vaccinationCheck" value="true"> 예</label>
+			<label><input type="radio" name="vaccinationCheck" value="false"> 아니오</label>
+		</div>
+	</div>
+
+	<div class="form-group">
+		<label>증빙 사진 (선택)</label>
+		<input type="file" id="proofImage" accept="image/*">
+	</div>
+
+	<div class="form-message error" id="registerError" style="display:none;"></div>
+	<button type="button" class="btn-primary" id="registerSubmit" style="width:auto;padding:12px 24px;">등록 신청</button>
+</div>
+
+<div id="placePopup" class="place-popup"></div>
+
+<script th:inline="javascript">
+	const IS_AUTHENTICATED = true;
+</script>
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/place-popup.js}"></script>
+<script th:src="@{/js/place-search.js}"></script>
+<script>PlacePopup.isLoggedIn = true;</script>
+<script th:src="@{/js/store-register.js}"></script>
+</body>
+</html>

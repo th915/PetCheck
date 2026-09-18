@@ -1,0 +1,130 @@
+spring:
+  application:
+    name: petcheck
+
+  # 프로젝트 루트의 .env 파일을 설정값으로 읽어온다.
+  config:
+    import: optional:file:.env[.properties]
+
+  # devtools 의 자동 재시작이 부팅 직후 파일 변경을 감지해 재시작을 걸면
+  # @EnableJpaAuditing 핸들러 빈이 두 번 등록되어 기동이 실패하는 경우가 있다.
+  devtools:
+    restart:
+      enabled: false
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/petcheck?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      # 병합 후 두 도메인(내 trip/trip_place 포함) 스키마를 엔티티 기준으로 자동 생성한다.
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+        jdbc:
+          batch_size: 500
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 20MB
+
+  thymeleaf:
+    cache: false
+
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+logging:
+  level:
+    com.petcheck: debug
+    org.hibernate.SQL: debug
+
+app:
+  expose-error-detail: true
+
+  upload:
+    dir: ${user.home}/petcheck-uploads
+  cors:
+    allowed-origin: http://localhost:8080
+
+  trust:
+    weight: 5
+    recalculation-cron: "0 0 4 * * *"
+
+  review:
+    half-life-days: 180
+    spam-threshold: 60
+    min-weight: 0.05
+    max-images: 5
+    receipt-date-tolerance-days: 30
+    location-radius-meters: 300
+    verification-weights:
+      RECEIPT: 1.0
+      PHOTO_EXIF: 0.85
+      LOCATION: 0.7
+      SCHEDULE: 0.5
+      NONE: 0.25
+    authenticity-weights:
+      GENUINE: 1.0
+      PENDING: 0.5
+      SUSPICIOUS: 0.3
+      FAKE: 0.0
+
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity: 24h
+
+  # AdminAccountInitializer 는 app.admin.* 을 읽는다 (app.jwt.admin.* 아님 — 원본 오프바이원 버그 수정)
+  admin:
+    bootstrap: true
+    email: admin@petcheck.com
+    password: admin1234!
+
+kakao:
+  map:
+    js-key: ${KAKAO_MAP_JS_KEY:}
+
+external:
+  tour-api:
+    key: ${TOUR_API_KEY:}
+    base-url: https://apis.data.go.kr/B551011/KorPetTourService2
+    detail-operation: detailPetTour2
+    connect-timeout: 3s
+    read-timeout: 5s
+
+  nts:
+    key: ${NTS_API_KEY:}
+    base-url: https://api.odcloud.kr/api/nts-businessman/v1
+
+  culture-data:
+    csv-path: ${user.home}/petcheck-data/culture-pet-facility.csv
+    charset: UTF-8
+
+  food-safety:
+    xlsx-path: ${user.home}/petcheck-data/pet-allowed-stores.xlsx
+
+  law:
+    oc: ${LAW_OC:}
+    base-url: https://www.law.go.kr/DRF
+
+  gemini:
+    api-key: ${GEMINI_API_KEY:}
+    base-url: https://generativelanguage.googleapis.com/v1beta
+    model: gemini-3.8-flash
+    fallback-model: gemini-2.5-flash
+    connect-timeout: 5s
+    read-timeout: 30s

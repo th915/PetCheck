@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>일정 생성 | PetCheck</title>
+	<link rel="stylesheet" th:href="@{/css/common.css}">
+	<link rel="stylesheet" th:href="@{/css/trip.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="app-shell with-panel">
+	<nav class="side-nav">
+		<a th:href="@{/trips/new}" class="active">📍<span>일정생성</span></a>
+		<a th:href="@{/trips}">📋<span>일정목록</span></a>
+	</nav>
+
+	<div class="search-panel">
+		<div class="search-box">
+			<input type="text" id="keywordInput" placeholder="장소명, 주소, 키워드로 검색">
+		</div>
+		<div class="sort-bar" id="sortBar">
+			<button data-sort="TRUST_SCORE" class="active">추천순</button>
+			<button data-sort="DISTANCE">거리순</button>
+			<button data-sort="REVIEW_COUNT">리뷰순</button>
+		</div>
+		<div class="sort-bar">
+			<button id="certifiedBtn">★ 인증 매장</button>
+			<button id="favoritesBtn">♥ 즐겨찾기</button>
+		</div>
+		<div class="place-list" id="placeList"></div>
+	</div>
+
+	<div class="trip-map-wrap">
+		<div class="date-tabs" id="dateTabs"></div>
+		<div class="map-area">
+			<div id="map"></div>
+			<div id="mapFallback" class="map-fallback" style="display:none;"></div>
+			<div id="placePopup" class="place-popup"></div>
+		</div>
+	</div>
+
+	<div class="trip-panel">
+		<div class="trip-panel-header">
+			<input type="text" id="tripTitle" placeholder="여행 이름을 입력하세요">
+			<div class="date-range-inline">
+				<input type="date" id="startDate">
+				<span>~</span>
+				<input type="date" id="endDate">
+			</div>
+		</div>
+		<div class="trip-place-list" id="tripPlaceList"></div>
+		<div class="trip-panel-footer">
+			<button class="btn-primary" id="registerBtn">등록</button>
+		</div>
+	</div>
+</div>
+
+<script th:inline="javascript">
+	const KAKAO_JS_KEY = /*[[${kakaoJsKey}]]*/ "";
+	const IS_CUSTOMER = /*[[${#authorization.expression('hasRole(''CUSTOMER'')')}]]*/ false;
+</script>
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/map-common.js}"></script>
+<script th:src="@{/js/place-popup.js}"></script>
+<script th:src="@{/js/review-write.js}"></script>
+<script th:src="@{/js/place-search.js}"></script>
+<script th:src="@{/js/trip-common.js}"></script>
+<script>
+	PlacePopup.isLoggedIn = true;
+	PlacePopup.isCustomer = IS_CUSTOMER;
+</script>
+<script th:src="@{/js/trip-create.js}"></script>
+</body>
+</html>

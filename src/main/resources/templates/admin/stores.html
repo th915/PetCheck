@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>매장 승인 | PetCheck</title>
+	<link rel="stylesheet" th:href="@{/css/common.css}">
+	<link rel="stylesheet" th:href="@{/css/store.css}">
+</head>
+<body>
+<div th:replace="~{fragments/layout :: header}"></div>
+
+<div class="store-page">
+	<h1>매장 인증 승인</h1>
+	<div class="sort-bar" id="statusTabs" style="padding:0 0 14px;">
+		<button data-status="PENDING" class="active">승인 대기</button>
+		<button data-status="APPROVED">승인됨</button>
+		<button data-status="REJECTED">반려됨</button>
+	</div>
+	<div id="storeList"></div>
+</div>
+
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/admin-stores.js}"></script>
+</body>
+</html>
