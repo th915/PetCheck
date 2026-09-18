@@ -30,4 +30,19 @@ public class RestClientConfig {
                 .requestFactory(ClientHttpRequestFactories.get(settings))
                 .build();
     }
+
+    @Bean
+    public RestClient kakaoLocalRestClient(ExternalApiProperties properties) {
+        ExternalApiProperties.KakaoLocal kakaoLocal = properties.kakaoLocal();
+
+        ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
+                .withConnectTimeout(kakaoLocal.connectTimeout())
+                .withReadTimeout(kakaoLocal.readTimeout());
+
+        return RestClient.builder()
+                .baseUrl(kakaoLocal.baseUrl())
+                .requestFactory(ClientHttpRequestFactories.get(settings))
+                .defaultHeader("Authorization", "KakaoAK " + kakaoLocal.key())
+                .build();
+    }
 }

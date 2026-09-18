@@ -15,6 +15,7 @@ import java.util.Set;
  * @param petSize           이 크기가 입장 가능한 장소만
  * @param petWeightKg       매장이 kg 상한을 건 경우 이 값과 비교한다
  * @param indoorRequired    true 면 실내 동반 가능한 곳만
+ * @param noCarrierOnly     true 면 케이지·캐리어 없이 동반 가능한 곳만
  * @param legalCertifiedOnly true 면 법정 기준 인증 매장만
  * @param minTrustScore     이 점수 이상만. TrustGrade.threshold() 를 넣으면 등급 필터가 된다
  * @param latitude          반경 검색 중심 위도
@@ -29,6 +30,7 @@ public record PlaceSearchCondition(
         PetSize petSize,
         Double petWeightKg,
         Boolean indoorRequired,
+        Boolean noCarrierOnly,
         Boolean legalCertifiedOnly,
         Double minTrustScore,
         Double latitude,

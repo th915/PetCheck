@@ -1,21 +1,29 @@
 package com.petcheck.backend.controller.place;
 
 import com.petcheck.backend.dto.common.PageResponse;
+import com.petcheck.backend.dto.place.MaterializePlaceRequest;
 import com.petcheck.backend.dto.place.PlaceDetail;
 import com.petcheck.backend.dto.place.PlaceSearchCondition;
 import com.petcheck.backend.dto.place.PlaceSummary;
+import com.petcheck.backend.external.kakao.KakaoLocalSearchClient;
+import com.petcheck.backend.external.kakao.dto.KakaoPlaceResult;
+import com.petcheck.backend.service.place.PlaceMaterializationService;
 import com.petcheck.backend.service.place.PlaceSearchService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 장소 검색 · 상세. 프론트가 제일 먼저 붙는 API 다.
@@ -29,6 +37,8 @@ import java.util.List;
 public class PlaceController {
 
     private final PlaceSearchService placeSearchService;
+    private final KakaoLocalSearchClient kakaoLocalSearchClient;
+    private final PlaceMaterializationService placeMaterializationService;
 
     /**
      * 목록 검색.
@@ -53,5 +63,25 @@ public class PlaceController {
     @GetMapping("/{id}")
     public PlaceDetail detail(@PathVariable Long id) {
         return placeSearchService.getDetail(id);
+    }
+
+    /**
+     * DB(공공데이터 4종)에 없는 장소를 카카오맵에서 찾는다. 저장하지 않고 그대로 보여만 준다.
+     * 예) /api/places/external-search?keyword=대형견카페&latitude=35.1&longitude=126.9
+     */
+    @GetMapping("/external-search")
+    public List<KakaoPlaceResult> externalSearch(@RequestParam String keyword,
+                                                  @RequestParam(required = false) Double latitude,
+                                                  @RequestParam(required = false) Double longitude) {
+        return kakaoLocalSearchClient.search(keyword, latitude, longitude);
+    }
+
+    /**
+     * 카카오 검색 결과를 처음 즐겨찾기·일정·리뷰에 쓰는 순간 실제 Place 로 만든다.
+     * 이미 만들어진 적 있으면 그 id 를 그대로 돌려준다(중복 생성 안 됨).
+     */
+    @PostMapping("/from-kakao")
+    public Map<String, Long> materializeFromKakao(@Valid @RequestBody MaterializePlaceRequest request) {
+        return Map.of("id", placeMaterializationService.materialize(request));
     }
 }

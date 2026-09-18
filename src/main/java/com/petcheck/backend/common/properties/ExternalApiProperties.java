@@ -16,7 +16,8 @@ public record ExternalApiProperties(
         TourApi tourApi,
         CultureData cultureData,
         FoodSafety foodSafety,
-        Law law
+        Law law,
+        KakaoLocal kakaoLocal
 ) {
 
     public record TourApi(
@@ -43,6 +44,22 @@ public record ExternalApiProperties(
 
         public boolean isConfigured() {
             return oc != null && !oc.isBlank();
+        }
+    }
+
+    /**
+     * 카카오 로컬 키워드 검색. DB 에 없는 장소도 검색·즐겨찾기·일정·리뷰가 되게 하는
+     * "장소 실체화"(PlaceMaterializationService) 의 데이터 소스다.
+     * 앱 키(kakao.map.js-key)와는 다른 REST API 키를 쓴다.
+     */
+    public record KakaoLocal(
+            String key,
+            String baseUrl,
+            Duration connectTimeout,
+            Duration readTimeout
+    ) {
+        public boolean isConfigured() {
+            return key != null && !key.isBlank();
         }
     }
 }

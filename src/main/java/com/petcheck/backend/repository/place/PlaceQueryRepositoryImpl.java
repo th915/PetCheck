@@ -8,6 +8,7 @@ import com.petcheck.backend.entity.place.PlaceCategory;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.Projections;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.CaseBuilder;
 import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -91,6 +92,7 @@ public class PlaceQueryRepositoryImpl implements PlaceQueryRepository {
                 careFacilityOnly(c.careFacilityOnly()),
                 admitsPet(c.petSize(), c.petWeightKg()),
                 indoorRequired(c.indoorRequired()),
+                noCarrierOnly(c.noCarrierOnly()),
                 legalCertifiedOnly(c.legalCertifiedOnly()),
                 minTrustScore(c.minTrustScore()),
                 withinBoundingBox(c)
@@ -168,6 +170,13 @@ public class PlaceQueryRepositoryImpl implements PlaceQueryRepository {
         return place.petPolicy.indoorAllowed.isTrue();
     }
 
+    private BooleanExpression noCarrierOnly(Boolean noCarrierOnly) {
+        if (noCarrierOnly == null || !noCarrierOnly) {
+            return null;
+        }
+        return place.petPolicy.carrierRequired.isFalse();
+    }
+
     /**
      * left join 이라 매장 등록이 없는 장소는 store.legalCertified 가 null 이다.
      * isTrue() 는 null 을 걸러내므로 IS NULL 을 따로 쓸 필요가 없다.
@@ -227,8 +236,28 @@ public class PlaceQueryRepositoryImpl implements PlaceQueryRepository {
             case RECENTLY_VERIFIED -> new OrderSpecifier<?>[]{
                     place.lastVerifiedAt.desc().nullsLast(), place.trustScore.desc(), place.id.asc()};
             case TRUST_SCORE -> new OrderSpecifier<?>[]{
-                    place.trustScore.desc(), place.reviewCount.desc(), place.id.asc()};
+                    recommendScore().desc(), place.id.asc()};
         };
+    }
+
+    /**
+     * "추천순" 은 신뢰도 하나만 보지 않는다.
+     * <p>
+     * 인증 매장 가점(+0.3) + 신뢰도 점수(0~1) + 리뷰 표본 가점(최대 +0.2, 20건부터 상한)을
+     * 더한 값으로 정렬한다. 표본이 없는 신규 장소(trustScore=0.5)가 인증도 없이
+     * 상단에 깔리는 것을 막고, 인증·검증 표본이 많은 장소가 앞으로 오게 한다.
+     */
+    private NumberExpression<Double> recommendScore() {
+        NumberExpression<Double> certifiedBonus = new CaseBuilder()
+                .when(store.legalCertified.isTrue()).then(0.3)
+                .otherwise(0.0);
+
+        NumberExpression<Integer> cappedReviewCount = new CaseBuilder()
+                .when(place.reviewCount.gt(20)).then(20)
+                .otherwise(place.reviewCount);
+        NumberExpression<Double> reviewBonus = cappedReviewCount.doubleValue().multiply(0.01);
+
+        return place.trustScore.add(certifiedBonus).add(reviewBonus);
     }
 
     /**

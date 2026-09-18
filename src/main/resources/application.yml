@@ -121,6 +121,12 @@ external:
     oc: ${LAW_OC:}
     base-url: https://www.law.go.kr/DRF
 
+  kakao-local:
+    key: ${KAKAO_REST_API_KEY:}
+    base-url: https://dapi.kakao.com/v2/local
+    connect-timeout: 3s
+    read-timeout: 5s
+
   gemini:
     api-key: ${GEMINI_API_KEY:}
     base-url: https://generativelanguage.googleapis.com/v1beta

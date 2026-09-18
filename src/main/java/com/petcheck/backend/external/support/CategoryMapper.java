@@ -2,6 +2,7 @@ package com.petcheck.backend.external.support;
 
 import com.petcheck.backend.entity.place.PlaceCategory;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -49,6 +50,51 @@ public final class CategoryMapper {
             return matched;
         }
         return BY_CATEGORY2.getOrDefault(trim(category2), PlaceCategory.ETC);
+    }
+
+    /**
+     * 카카오 로컬 검색의 category_name(예: "의료,건강 > 동물병원", "음식점 > 카페 > 커피전문점")을 옮긴다.
+     * <p>
+     * 카카오 카테고리는 문화정보원과 달리 값이 열려 있어(사실상 무한) 정확 매핑표를 만들 수 없다.
+     * 부분 문자열 매칭으로 가되, 더 구체적인(반려동물 전용) 키워드를 먼저 본다 —
+     * "동물병원"이 "병원"보다 먼저 걸려야 VET 으로 가고 ETC 로 새지 않는다.
+     */
+    private static final Map<String, PlaceCategory> KAKAO_KEYWORDS = new LinkedHashMap<>();
+
+    static {
+        KAKAO_KEYWORDS.put("동물병원", PlaceCategory.VET);
+        KAKAO_KEYWORDS.put("동물약국", PlaceCategory.PET_PHARMACY);
+        KAKAO_KEYWORDS.put("애견미용", PlaceCategory.PET_GROOMING);
+        KAKAO_KEYWORDS.put("펫미용", PlaceCategory.PET_GROOMING);
+        KAKAO_KEYWORDS.put("애견호텔", PlaceCategory.PET_HOTEL);
+        KAKAO_KEYWORDS.put("애견유치원", PlaceCategory.PET_KINDERGARTEN);
+        KAKAO_KEYWORDS.put("펫시터", PlaceCategory.PET_SITTER);
+        KAKAO_KEYWORDS.put("반려동물용품", PlaceCategory.PET_SUPPLY);
+        KAKAO_KEYWORDS.put("애견용품", PlaceCategory.PET_SUPPLY);
+        KAKAO_KEYWORDS.put("카페", PlaceCategory.CAFE);
+        KAKAO_KEYWORDS.put("음식점", PlaceCategory.RESTAURANT);
+        KAKAO_KEYWORDS.put("숙박", PlaceCategory.ACCOMMODATION);
+        KAKAO_KEYWORDS.put("펜션", PlaceCategory.ACCOMMODATION);
+        KAKAO_KEYWORDS.put("호텔", PlaceCategory.ACCOMMODATION);
+        KAKAO_KEYWORDS.put("모텔", PlaceCategory.ACCOMMODATION);
+        KAKAO_KEYWORDS.put("관광", PlaceCategory.TOURIST_SPOT);
+        KAKAO_KEYWORDS.put("명소", PlaceCategory.TOURIST_SPOT);
+        KAKAO_KEYWORDS.put("문화", PlaceCategory.CULTURE);
+        KAKAO_KEYWORDS.put("박물관", PlaceCategory.CULTURE);
+        KAKAO_KEYWORDS.put("미술관", PlaceCategory.CULTURE);
+        KAKAO_KEYWORDS.put("병원", PlaceCategory.VET);
+        KAKAO_KEYWORDS.put("약국", PlaceCategory.PET_PHARMACY);
+        KAKAO_KEYWORDS.put("미용", PlaceCategory.PET_GROOMING);
+    }
+
+    public static PlaceCategory fromKakaoCategoryName(String categoryName) {
+        String value = trim(categoryName);
+        for (Map.Entry<String, PlaceCategory> entry : KAKAO_KEYWORDS.entrySet()) {
+            if (value.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return PlaceCategory.ETC;
     }
 
     private static String trim(String value) {
