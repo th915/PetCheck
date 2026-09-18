@@ -79,3 +79,70 @@ function escapeHtml(str) {
 		.replace(/"/g, "&quot;")
 		.replace(/'/g, "&#39;");
 }
+
+/**
+ * window.confirm/alert 대체.
+ * <p>
+ * 네이티브 다이얼로그는 임베디드 웹뷰(앱 내 브라우저, 자동화 도구 등)에서
+ * 아예 뜨지 않거나 자동으로 취소돼 버리는 환경이 있다. 그런 곳에서는
+ * "삭제" 버튼을 눌러도 아무 일도 안 일어나는 것처럼 보인다.
+ * 페이지 안에 직접 그리는 모달이면 어떤 브라우저 컨텍스트에서도 동일하게 동작한다.
+ */
+const UIDialog = (() => {
+	function build(message, { showCancel, showInput }) {
+		const overlay = document.createElement("div");
+		overlay.className = "ui-dialog-overlay";
+		overlay.innerHTML = `
+			<div class="ui-dialog-box">
+				<div class="ui-dialog-message"></div>
+				${showInput ? '<input type="text" class="ui-dialog-input">' : ""}
+				<div class="ui-dialog-actions">
+					${showCancel ? '<button type="button" class="ui-dialog-btn ui-dialog-cancel">취소</button>' : ""}
+					<button type="button" class="ui-dialog-btn ui-dialog-ok">확인</button>
+				</div>
+			</div>
+		`;
+		overlay.querySelector(".ui-dialog-message").textContent = message;
+		document.body.appendChild(overlay);
+		return overlay;
+	}
+
+	function open(message, { showCancel, showInput }) {
+		return new Promise((resolve) => {
+			const overlay = build(message, { showCancel, showInput });
+			const input = overlay.querySelector(".ui-dialog-input");
+			const finish = (result) => {
+				overlay.remove();
+				resolve(result);
+			};
+			const ok = () => finish(showInput ? input.value : true);
+			overlay.querySelector(".ui-dialog-ok").addEventListener("click", ok);
+			const cancelBtn = overlay.querySelector(".ui-dialog-cancel");
+			if (cancelBtn) cancelBtn.addEventListener("click", () => finish(showInput ? null : false));
+			overlay.addEventListener("click", (e) => {
+				if (e.target === overlay) finish(showInput ? null : false);
+			});
+			if (input) {
+				input.addEventListener("keydown", (e) => {
+					if (e.key === "Enter") ok();
+				});
+				input.focus();
+			} else {
+				overlay.querySelector(".ui-dialog-ok").focus();
+			}
+		});
+	}
+
+	return {
+		confirm(message) {
+			return open(message, { showCancel: true });
+		},
+		alert(message) {
+			return open(message, { showCancel: false });
+		},
+		/** 취소하면 null, 확인하면 입력값(빈 문자열 포함)을 준다 */
+		prompt(message) {
+			return open(message, { showCancel: true, showInput: true });
+		},
+	};
+})();

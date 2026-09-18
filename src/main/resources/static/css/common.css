@@ -338,6 +338,26 @@ button {
 	color: #d9d3cb;
 }
 
+.badge-kakao {
+	display: inline-block;
+	font-size: 10px;
+	font-weight: 700;
+	color: #3c1e1e;
+	background: #fee500;
+	border-radius: 4px;
+	padding: 1px 5px;
+	margin-left: 6px;
+	vertical-align: middle;
+}
+
+.list-section-label {
+	padding: 10px 14px 4px;
+	font-size: 11px;
+	color: var(--text-muted);
+	border-top: 1px solid var(--border);
+	margin-top: 4px;
+}
+
 .add-to-trip-btn {
 	font-size: 12px;
 	padding: 5px 8px;
@@ -488,4 +508,64 @@ button {
 	text-align: center;
 	color: var(--text-muted);
 	font-size: 13px;
+}
+
+/* 네이티브 confirm()/alert() 대체 모달 (js/api.js UIDialog) */
+.ui-dialog-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(44, 38, 32, 0.45);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10000;
+}
+
+.ui-dialog-box {
+	background: #fff;
+	border-radius: var(--radius);
+	padding: 20px;
+	width: 320px;
+	max-width: calc(100vw - 32px);
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}
+
+.ui-dialog-message {
+	font-size: 14px;
+	color: var(--text);
+	line-height: 1.5;
+	white-space: pre-wrap;
+	margin-bottom: 16px;
+}
+
+.ui-dialog-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.ui-dialog-btn {
+	padding: 8px 14px;
+	border-radius: 8px;
+	font-size: 13px;
+	font-weight: 600;
+	border: 1px solid var(--border);
+	background: #fff;
+	color: var(--text);
+}
+
+.ui-dialog-btn.ui-dialog-ok {
+	background: var(--primary);
+	border-color: var(--primary);
+	color: #fff;
+}
+
+.ui-dialog-input {
+	width: 100%;
+	padding: 9px 10px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	font-size: 13px;
+	margin-bottom: 16px;
+	font-family: inherit;
 }

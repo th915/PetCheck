@@ -23,7 +23,7 @@
 					`<img class="proof-thumb" src="${store.proofImageUrl}" alt="증빙 사진">`;
 			}
 		} catch (e) {
-			alert(e.message);
+			UIDialog.alert(e.message);
 		}
 	}
 

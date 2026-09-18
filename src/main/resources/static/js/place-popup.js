@@ -110,7 +110,7 @@ const PlacePopup = {
 
 	async toggleFavoriteRaw(placeId) {
 		if (!this.isLoggedIn) {
-			if (confirm("로그인이 필요합니다. 로그인 페이지로 이동할까요?")) {
+			if (await UIDialog.confirm("로그인이 필요합니다. 로그인 페이지로 이동할까요?")) {
 				location.href = "/login";
 			}
 			return null;
@@ -120,7 +120,7 @@ const PlacePopup = {
 			if (this.onFavoriteToggled) this.onFavoriteToggled(placeId, result.favorited);
 			return result;
 		} catch (e) {
-			alert(e.message);
+			UIDialog.alert(e.message);
 			return null;
 		}
 	},

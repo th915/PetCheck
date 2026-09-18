@@ -120,7 +120,7 @@ const ReviewWrite = {
 				receiptImageUrl,
 			});
 
-			alert("리뷰가 등록되었습니다. AI 진위 판정과 영수증 인증은 잠시 후 자동으로 반영됩니다.");
+			await UIDialog.alert("리뷰가 등록되었습니다. AI 진위 판정과 영수증 인증은 잠시 후 자동으로 반영됩니다.");
 			PlacePopup.open(placeId);
 		} catch (e) {
 			errorEl.textContent = e.message;

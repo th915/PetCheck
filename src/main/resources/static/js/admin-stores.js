@@ -40,24 +40,24 @@
 
 		listEl.querySelectorAll("[data-approve]").forEach((btn) => {
 			btn.addEventListener("click", async () => {
-				if (!confirm("이 매장을 승인하시겠습니까?")) return;
+				if (!(await UIDialog.confirm("이 매장을 승인하시겠습니까?"))) return;
 				try {
 					await Api.post(`/api/admin/stores/${btn.dataset.approve}/approve`);
 					await load();
 				} catch (e) {
-					alert(e.message);
+					UIDialog.alert(e.message);
 				}
 			});
 		});
 		listEl.querySelectorAll("[data-reject]").forEach((btn) => {
 			btn.addEventListener("click", async () => {
-				const reason = prompt("반려 사유를 입력해주세요.");
+				const reason = await UIDialog.prompt("반려 사유를 입력해주세요.");
 				if (!reason) return;
 				try {
 					await Api.post(`/api/admin/stores/${btn.dataset.reject}/reject`, { reason });
 					await load();
 				} catch (e) {
-					alert(e.message);
+					UIDialog.alert(e.message);
 				}
 			});
 		});
