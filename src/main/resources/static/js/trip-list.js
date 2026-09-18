@@ -31,12 +31,14 @@
 		for (let i = 0; i < firstDow; i++) {
 			html += '<div class="calendar-cell empty"></div>';
 		}
+		const todayStr = dateStr(today.getFullYear(), today.getMonth(), today.getDate());
 		for (let d = 1; d <= daysInMonth; d++) {
 			const dstr = dateStr(viewYear, viewMonth, d);
 			const dayTrips = tripsOnDate(dstr);
+			const isToday = dstr === todayStr;
 			html += `
-				<div class="calendar-cell">
-					<div class="cell-date">${d}</div>
+				<div class="calendar-cell${isToday ? " today" : ""}">
+					<div class="cell-date">${d}${isToday ? '<span class="today-badge">오늘</span>' : ""}</div>
 					${dayTrips.map((t) => `<div class="calendar-trip-chip" data-trip-id="${t.id}" title="${escapeHtml(t.title)}">${escapeHtml(t.title)}</div>`).join("")}
 				</div>
 			`;
@@ -66,12 +68,12 @@
 		});
 		flatListEl.querySelectorAll("[data-delete]").forEach((el) => {
 			el.addEventListener("click", async () => {
-				if (!confirm("이 여행 일정을 삭제하시겠습니까?")) return;
+				if (!(await UIDialog.confirm("이 여행 일정을 삭제하시겠습니까?"))) return;
 				try {
 					await Api.del(`/api/trips/${el.dataset.delete}`);
 					await load();
 				} catch (e) {
-					alert(e.message);
+					UIDialog.alert(e.message);
 				}
 			});
 		});

@@ -47,11 +47,11 @@
 
 	function addPlace(place) {
 		if (!draft.startDate || !draft.endDate) {
-			alert("먼저 여행 날짜를 입력해주세요.");
+			UIDialog.alert("먼저 여행 날짜를 입력해주세요.");
 			return;
 		}
 		if (draft.places.some((p) => p.placeId === place.id)) {
-			alert("이미 등록된 장소입니다.");
+			UIDialog.alert("이미 등록된 장소입니다.");
 			return;
 		}
 		const targetDate = draft.startDate;
@@ -106,7 +106,7 @@
 		draft.startDate = startInput.value || null;
 		draft.endDate = endInput.value || null;
 		if (draft.startDate && draft.endDate && draft.endDate < draft.startDate) {
-			alert("종료일은 시작일보다 빠를 수 없습니다.");
+			UIDialog.alert("종료일은 시작일보다 빠를 수 없습니다.");
 			endInput.value = draft.startDate;
 			draft.endDate = draft.startDate;
 		}
@@ -125,11 +125,11 @@
 	async function submit() {
 		draft.title = titleInput.value.trim();
 		if (!draft.title) {
-			alert("여행 이름을 입력해주세요.");
+			UIDialog.alert("여행 이름을 입력해주세요.");
 			return;
 		}
 		if (!draft.startDate || !draft.endDate) {
-			alert("여행 날짜를 입력해주세요.");
+			UIDialog.alert("여행 날짜를 입력해주세요.");
 			return;
 		}
 		const payload = {
@@ -147,7 +147,7 @@
 			const result = await Api.post("/api/trips", payload);
 			location.href = `/trips/${result.id}`;
 		} catch (e) {
-			alert(e.message);
+			UIDialog.alert(e.message);
 		}
 	}
 

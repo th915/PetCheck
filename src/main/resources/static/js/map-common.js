@@ -106,4 +106,10 @@ const MapKit = {
 		if (!this.ready) return;
 		this.map.panTo(new kakao.maps.LatLng(lat, lng));
 	},
+
+	/** 지도 컨테이너 크기가 JS 로 바뀐 뒤(리사이즈 핸들 드래그 등) 호출해 다시 그리게 한다 */
+	relayout() {
+		if (!this.ready) return;
+		this.map.relayout();
+	},
 };

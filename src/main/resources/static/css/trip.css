@@ -162,15 +162,59 @@
 	border-top: 1px solid var(--border);
 }
 
+/* 일정 상세 페이지: 왼쪽 일정 정보 패널 너비를 드래그로 조절 */
+#tripInfoPanel {
+	min-width: 220px;
+	max-width: 70vw;
+}
+
+/*
+ * .app-shell 의 자식(grid item)이지만 position:absolute 라 grid 배치에서는 빠진다 —
+ * 그래서 4열짜리 grid-template-columns 사이에 끼워 넣어도 나머지 칸 배정이 안 흐트러진다.
+ * search-panel 안에 넣지 않고 app-shell 바로 아래 둔 이유: 카카오맵 SDK 가 지도
+ * 컨테이너 안쪽 레이어에 z-index 를 걸어 두면, 같은 조상 트리 안에서는 아무리
+ * z-index 를 올려도 이 핸들이 지도 밑에 깔려 클릭이 지도로 먼저 들어가 버린다.
+ */
+.app-shell {
+	position: relative;
+}
+
+.panel-resize-handle {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 10px;
+	cursor: col-resize;
+	z-index: 9999;
+	touch-action: none;
+}
+
+.panel-resize-handle::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 4px;
+	width: 2px;
+	background: var(--border);
+}
+
+.panel-resize-handle:hover::after,
+.panel-resize-handle.dragging::after {
+	background: var(--primary);
+}
+
 .trip-panel-footer .btn-primary {
 	margin-top: 0;
 }
 
 /* Trip list / calendar */
 .trip-list-page {
+	width: 100%;
 	padding: 24px 32px;
 	max-width: 960px;
 	margin: 0 auto;
+	box-sizing: border-box;
 }
 
 .trip-list-header {
@@ -231,10 +275,32 @@
 	background: transparent;
 }
 
+.calendar-cell.today {
+	background: #fdece3;
+	border: 1px solid var(--primary);
+}
+
 .calendar-cell .cell-date {
 	font-size: 11px;
 	color: var(--text-muted);
 	padding: 2px 2px 0;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.calendar-cell.today .cell-date {
+	color: var(--primary);
+	font-weight: 700;
+}
+
+.today-badge {
+	background: var(--primary);
+	color: #fff;
+	border-radius: 4px;
+	padding: 1px 4px;
+	font-size: 9px;
+	font-weight: 700;
 }
 
 .calendar-trip-chip {

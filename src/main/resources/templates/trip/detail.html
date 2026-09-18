@@ -16,7 +16,7 @@
 		<a th:href="@{/trips}" class="active">📋<span>일정목록</span></a>
 	</nav>
 
-	<div class="search-panel" style="border-right:none;">
+	<div class="search-panel" id="tripInfoPanel" style="border-right:none;">
 		<div class="trip-panel-header">
 			<div id="tripViewTitle" style="font-weight:700;font-size:16px;margin-bottom:8px;"></div>
 			<button class="date-range-btn" id="editDatesBtn">📅 <span id="tripViewDates"></span> (여행 날짜 수정)</button>
@@ -35,6 +35,8 @@
 			<button class="trip-delete-btn" id="deleteTripBtn" style="width:100%;padding:9px;">여행 삭제</button>
 		</div>
 	</div>
+
+	<div class="panel-resize-handle" id="panelResizeHandle"></div>
 
 	<div class="trip-map-wrap" style="grid-column: span 2;">
 		<div class="date-tabs" id="dateTabs"></div>
